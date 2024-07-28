@@ -64,11 +64,14 @@
 #include <ignition/gazebo/components/ParentEntity.hh>
 #include <ignition/gazebo/components/Pose.hh>
 #include <ignition/gazebo/components/Sensor.hh>
-
 #include <ignition/transport/Node.hh>
-
+#define GZ_TRANSPORT_NAMESPACE ignition::transport::
+#define GZ_MSGS_NAMESPACE ignition::msgs::
+#endif
 
 #include <hardware_interface/hardware_info.hpp>
+#include <hardware_interface/lexical_casts.hpp>
+#include <hardware_interface/types/hardware_interface_type_values.hpp>
 
 struct jointData
 {
@@ -121,7 +124,7 @@ public:
   std::string topicName{};
 
   /// \brief handles to the force torque from within Gazebo
-  sim::Entity sim_ft_sensors_ = sim::kNullEntity;
+  gz::sim::Entity sim_ft_sensors_ = gz::sim::kNullEntity;
 
   /// \brief An array per FT
   std::array<double, 6> ft_sensor_data_;
@@ -538,17 +541,17 @@ void IgnitionSystem::registerSensors(
       return true;
     });
 
-  this->dataPtr->ecm->Each<sim::components::ForceTorque,
-    sim::components::Name>(
-    [&](const sim::Entity & _entity,
-    const sim::components::ForceTorque *,
-    const sim::components::Name * _name) -> bool
+  this->dataPtr->ecm->Each<gz::sim::components::ForceTorque,
+    gz::sim::components::Name>(
+    [&](const gz::sim::Entity & _entity,
+    const gz::sim::components::ForceTorque *,
+    const gz::sim::components::Name * _name) -> bool
     {
       auto ftData = std::make_shared<ForceTorqueData>();
       RCLCPP_INFO_STREAM(this->nh_->get_logger(), "Loading sensor: " << _name->Data());
 
       auto sensorTopicComp = this->dataPtr->ecm->Component<
-        sim::components::SensorTopic>(_entity);
+        gz::sim::components::SensorTopic>(_entity);
       if (sensorTopicComp) {
         RCLCPP_INFO_STREAM(this->nh_->get_logger(), "Topic name: " << sensorTopicComp->Data());
       }
@@ -681,7 +684,7 @@ hardware_interface::return_type IgnitionSystem::read(
   for (unsigned int i = 0; i < this->dataPtr->ft_sensors_.size(); ++i) {
     if (this->dataPtr->ft_sensors_[i]->topicName.empty()) {
       auto sensorTopicComp = this->dataPtr->ecm->Component<
-        sim::components::SensorTopic>(this->dataPtr->ft_sensors_[i]->sim_ft_sensors_);
+        gz::sim::components::SensorTopic>(this->dataPtr->ft_sensors_[i]->sim_ft_sensors_);
       if (sensorTopicComp) {
         this->dataPtr->ft_sensors_[i]->topicName = sensorTopicComp->Data();
         RCLCPP_INFO_STREAM(
